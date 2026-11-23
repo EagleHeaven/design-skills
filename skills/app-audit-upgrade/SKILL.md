@@ -5,6 +5,8 @@ description: Audits a Node, React, Next.js or React Native app for known securit
 
 # App audit and upgrade
 
+**Why this skill exists.** A published security advisory on a framework version blocked the build of a real app, so nothing could be deployed. Upgrading blindly can break the app; not upgrading leaves a known hole open. This skill audits first, upgrades in isolation, verifies, and never redoes work that already exists.
+
 Goal: find what is vulnerable or outdated, upgrade only what is needed, prove it works, and leave the original checkout untouched until the user says so.
 
 ## Rules
