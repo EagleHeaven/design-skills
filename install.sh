@@ -8,7 +8,7 @@ DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 mkdir -p "$DEST"
-for skill in android-material apple-hig; do
+for skill in android-material apple-hig app-audit-upgrade; do
   if [ -e "$DEST/$skill" ]; then
     mv "$DEST/$skill" "$DEST/$skill.backup-$STAMP"
     echo "Ancienne version sauvegardée : $DEST/$skill.backup-$STAMP"

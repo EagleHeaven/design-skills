@@ -4,6 +4,7 @@ Deux skills de design pour Claude Code :
 
 - `android-material` : Material Design 3 et Android (composants, tokens, Compose).
 - `apple-hig` : Apple Human Interface Guidelines (iOS, macOS, visionOS, etc.).
+- `app-audit-upgrade` : audit d'une app (dépendances, avis de sécurité) puis mise à jour sûre dans un worktree Git, avec sauvegarde et vérifications.
 
 ## Installation
 
