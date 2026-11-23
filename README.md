@@ -17,15 +17,31 @@ Le but est simple : des écrans cohérents avec leur plateforme, et une qualité
 
 ## Installation
 
+En une ligne :
+
 ```bash
-git clone URL_DU_DEPOT design-skills
+curl -fsSL https://raw.githubusercontent.com/EagleHeaven/design-skills/main/install.sh | bash
+```
+
+Ou en clonant le dépôt :
+
+```bash
+git clone https://github.com/EagleHeaven/design-skills.git
 cd design-skills
 ./install.sh
 ```
 
-Le script copie les skills dans `~/.claude/skills/`. Si une version existe déjà, elle est renommée `*.backup-AAAAMMJJ-HHMMSS`, rien n'est écrasé.
+Options :
 
-Pour un autre dossier : `CLAUDE_SKILLS_DIR=/chemin ./install.sh`
+```bash
+./install.sh --list          # les skills disponibles et ce que fait chacun
+./install.sh apple-hig       # installer seulement les skills nommés
+./install.sh --help
+```
+
+Avec la ligne `curl`, les options passent après `bash -s --`, par exemple `... | bash -s -- apple-hig`.
+
+Le script copie les skills dans `~/.claude/skills/`. Si une version existe déjà, elle est renommée `*.backup-AAAAMMJJ-HHMMSS`, rien n'est écrasé. Pour un autre dossier : `CLAUDE_SKILLS_DIR=/chemin ./install.sh`. Pour couper les couleurs : `NO_COLOR=1`.
 
 Ensuite, ouvre une nouvelle session Claude Code.
 
