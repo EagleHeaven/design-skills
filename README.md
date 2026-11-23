@@ -51,7 +51,7 @@ Options :
 
 Avec la ligne `curl`, les options passent après `bash -s --`, par exemple `... | bash -s -- --core`.
 
-Nos skills vont dans `~/.claude/skills/`. Si une version existe déjà, elle est renommée `*.backup-AAAAMMJJ-HHMMSS`, rien n'est écrasé. Les skills partenaires demandent Node.js (`npx`), les plugins demandent la commande `claude`. Pour un autre dossier : `CLAUDE_SKILLS_DIR=/chemin ./install.sh`. Pour couper les couleurs : `NO_COLOR=1`.
+Nos skills vont dans `~/.claude/skills/`. Si une version existe déjà, elle est déplacée dans `~/.claude/skills-backups/`, rien n'est écrasé. Les skills partenaires demandent Node.js (`npx`), les plugins demandent la commande `claude`. Pour un autre dossier : `CLAUDE_SKILLS_DIR=/chemin ./install.sh`. Pour couper les couleurs : `NO_COLOR=1`.
 
 Ensuite, ouvre une nouvelle session Claude Code.
 

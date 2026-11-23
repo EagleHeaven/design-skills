@@ -11,7 +11,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/EagleHeaven/design-skills/main/install.sh | bash
 #
 # Our skills go to ~/.claude/skills (or $CLAUDE_SKILLS_DIR). A skill already
-# there is renamed <name>.backup-YYYYMMDD-HHMMSS first: nothing is overwritten.
+# there is moved to ~/.claude/skills-backups/<name>-YYYYMMDD-HHMMSS first:
+# nothing is overwritten, and Claude does not load the old copy twice.
 # Partner skills need Node (npx); plugins need the `claude` CLI. NO_COLOR=1
 # turns colors off.
 
@@ -37,6 +38,7 @@ set -euo pipefail
 
 main() {
   DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+  BACKUPS="$(dirname "$DEST")/skills-backups"
   STAMP="$(date +%Y%m%d-%H%M%S)"
   setup_colors
 
@@ -182,8 +184,9 @@ install_ours() {
       warn "$s"; note "not in this repo (see --list)"; failed=$((failed + 1)); continue
     fi
     if [ -e "$DEST/$s" ]; then
-      mv "$DEST/$s" "$DEST/$s.backup-$STAMP"
-      ok "$s"; note "previous version kept as $s.backup-$STAMP"
+      mkdir -p "$BACKUPS"
+      mv "$DEST/$s" "$BACKUPS/$s-$STAMP"
+      ok "$s"; note "previous version kept in $(pretty_path "$BACKUPS")/$s-$STAMP"
     else
       ok "$s"
     fi
