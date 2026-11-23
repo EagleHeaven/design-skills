@@ -1,0 +1,9 @@
+# Permissions
+Source: https://developer.android.com/design/ui/ai-glasses/guides/interaction/permissions
+
+When an app needs permissions to be granted the glasses, it should direct the user to the phone where a permissions dialog will display.
+
+From there, follow permissions best practices for mobile:
+
+- Prime the user, so they know why the permissions are asked and possible implications to features.
+- Provide a way to update permissions preferences later.

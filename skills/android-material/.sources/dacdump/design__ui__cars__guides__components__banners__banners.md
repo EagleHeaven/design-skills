@@ -1,0 +1,45 @@
+# Banner
+Source: https://developer.android.com/design/ui/cars/guides/components/banners/banners
+
+> [!NOTE]
+> **Note:** Banners are only supported in the sectioned item template in Car App Library v1.9.
+
+## Overview
+
+Banners can help showcase special app experiences, new features, or important
+messages. While functionally similar to standard rows, banners add distinct
+visual prominence through customizable background fills and will always be
+visually separated from surrounding content.
+
+*** ** * ** ***
+
+## Composition
+
+The Banner item is designed for high glanceability and includes four components,
+two of which are required:
+
+- **Leading image or icon** (required)
+- **Primary text: title and subtexts** (required)
+- Secondary text (optional)
+- Trailing image or icon (optional)
+
+*1.* *Leading image*
+
+*2.* *Primary text*
+
+*3.* *Secondary text (optional)*
+
+*4.* *Trailing element (optional)*
+
+*** ** * ** ***
+
+## UX requirements
+
+To ensure a safe and consistent experience across all apps, follow these design
+requirements:
+
+| Requirement level | Content |
+|---|---|
+| MUST | Display only one banner per section. Place banners in a dedicated section that contains no other component types. |
+| SHOULD | Apply custom background fills, button accent colors, and distinct corner radii to separate banners from standard content rows. |
+| SHOULD | Avoid placing banner sections directly adjacent to one another to preserve their visual prominence. |
