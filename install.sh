@@ -1,33 +1,89 @@
 #!/usr/bin/env bash
 # design-skills installer, by RedEagle01
 #
-#   ./install.sh                      install every skill in this repo
-#   ./install.sh apple-hig            install only the skills you name
-#   ./install.sh --list               list the skills, with what each one does
+#   ./install.sh                      install everything: our skills, partner skills, plugins
+#   ./install.sh --core               install only the skills in this repo
+#   ./install.sh apple-hig            install only the skills you name (from this repo)
+#   ./install.sh --list               list everything this kit installs
 #   ./install.sh --help               show this help
 #
 # One line, without cloning first:
 #   curl -fsSL https://raw.githubusercontent.com/EagleHeaven/design-skills/main/install.sh | bash
 #
-# Skills go to ~/.claude/skills (or $CLAUDE_SKILLS_DIR). A skill that is
-# already there is renamed <name>.backup-YYYYMMDD-HHMMSS first: nothing is
-# ever overwritten. NO_COLOR=1 turns colors off.
+# Our skills go to ~/.claude/skills (or $CLAUDE_SKILLS_DIR). A skill already
+# there is renamed <name>.backup-YYYYMMDD-HHMMSS first: nothing is overwritten.
+# Partner skills need Node (npx); plugins need the `claude` CLI. NO_COLOR=1
+# turns colors off.
+
+# ---- kit ---------------------------------------------------------------------
+KIT_TAGLINE="design skills for Claude Code, by RedEagle01"
+REPO_URL="https://github.com/EagleHeaven/design-skills.git"
+
+# Partner skills, installed from their authors' repos with `npx skills`.
+# "owner/repo|what it brings"
+SKILL_PACKS=(
+  "emilkowalski/skills|animation, gestures and design engineering (Emil Kowalski)"
+  "leonxlnx/taste-skill|anti-generic frontend taste (Leon)"
+)
+
+# Claude Code plugins. "plugin@marketplace|marketplace source|what it brings"
+PLUGINS=(
+  "frontend-design@claude-plugins-official|anthropics/claude-plugins-official|distinctive frontend design (Anthropic)"
+  "impeccable@impeccable|pbakaus/impeccable|design audit and polish commands (Paul Bakaus)"
+)
+
+# ---- engine (same in every RedEagle01 kit) -----------------------------------
 set -euo pipefail
 
-REPO_URL="https://github.com/EagleHeaven/design-skills.git"
-DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
-STAMP="$(date +%Y%m%d-%H%M%S)"
+main() {
+  DEST="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+  STAMP="$(date +%Y%m%d-%H%M%S)"
+  setup_colors
 
-if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
-  RED=$'\033[1;31m'; DIM=$'\033[2m'; BOLD=$'\033[1m'
-  GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
-  TTY=1
-else
-  RED=''; DIM=''; BOLD=''; GREEN=''; YELLOW=''; RESET=''
-  TTY=0
-fi
+  local list=0 core=0 arg
+  local names=()
+  for arg in "$@"; do
+    case "$arg" in
+      -h|--help) banner; usage; return 0 ;;
+      -l|--list) list=1 ;;
+      --core) core=1 ;;
+      -*) banner; fail "Unknown option: $arg (see --help)" ;;
+      *) names+=("$arg") ;;
+    esac
+  done
+  # Naming skills means: only those, from this repo.
+  if [ "${#names[@]}" -gt 0 ]; then core=1; fi
 
-pretty_path() { printf '%s' "${1/#$HOME/~}"; }
+  banner
+  find_source
+
+  if [ "$list" = 1 ]; then show_list; return 0; fi
+
+  local failures=0
+  install_ours "${names[@]+"${names[@]}"}" || failures=$((failures + $?))
+  if [ "$core" = 0 ]; then
+    install_packs || failures=$((failures + $?))
+    install_plugins || failures=$((failures + $?))
+  fi
+
+  printf '\n'
+  if [ "$failures" -eq 0 ]; then
+    printf '  %sAll done.%s Open a new Claude Code session to load everything.\n' "$GREEN" "$RESET"
+  else
+    printf '  %s%s step(s) did not finish.%s The rest is installed; see the ✗ lines above.\n' "$YELLOW" "$failures" "$RESET"
+  fi
+  printf '\n  %sFly high. RedEagle01%s\n\n' "$RED" "$RESET"
+  [ "$failures" -eq 0 ]
+}
+
+setup_colors() {
+  if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+    RED=$'\033[1;31m'; DIM=$'\033[2m'; BOLD=$'\033[1m'
+    GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'; TTY=1
+  else
+    RED=''; DIM=''; BOLD=''; GREEN=''; YELLOW=''; RESET=''; TTY=0
+  fi
+}
 
 banner() {
   local line
@@ -43,17 +99,24 @@ banner() {
 ██║  ██║███████╗██████╔╝    ███████╗██║  ██║╚██████╔╝███████╗███████╗
 ╚═╝  ╚═╝╚══════╝╚═════╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝
 ART
-  printf '%s' "$RESET"
-  printf '  %sdesign skills for Claude Code, by RedEagle01%s\n\n' "$DIM" "$RESET"
+  printf '%s  %s%s%s\n\n' "$RESET" "$DIM" "$KIT_TAGLINE" "$RESET"
 }
 
 usage() {
-  sed -n '2,14p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true
+  if [ -f "${BASH_SOURCE[0]:-}" ]; then
+    sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  else
+    printf '  Options: --core, --list, --help, or skill names. See the README.\n'
+  fi
 }
 
 fail() { printf '  %s✗ %s%s\n' "$RED" "$1" "$RESET" >&2; exit 1; }
+section() { printf '\n  %s%s%s\n' "$BOLD" "$1" "$RESET"; }
+ok() { printf '  %s✓%s %s\n' "$GREEN" "$RESET" "$1"; }
+warn() { printf '  %s✗%s %s\n' "$RED" "$RESET" "$1"; }
+note() { printf '    %s%s%s\n' "$DIM" "$1" "$RESET"; }
+pretty_path() { printf '%s' "${1/#$HOME/~}"; }
 
-# The one-line description from a skill's SKILL.md, cut to fit a terminal.
 describe() {
   local d
   d="$(sed -n 's/^description:[[:space:]]*//p' "$1/SKILL.md" | head -1)"
@@ -61,93 +124,119 @@ describe() {
   printf '%s' "$d"
 }
 
-# --- arguments ---------------------------------------------------------------
-LIST=0
-ARGS=()
-for arg in "$@"; do
-  case "$arg" in
-    -h|--help) banner; usage; exit 0 ;;
-    -l|--list) LIST=1 ;;
-    -*) banner; fail "Unknown option: $arg (see --help)" ;;
-    *) ARGS+=("$arg") ;;
-  esac
-done
-
-banner
-
-# --- where the skills come from ----------------------------------------------
-# From the repo this script sits in, or, when piped from curl, a fresh clone.
+# Skills come from the repo this script sits in, or from a fresh clone when
+# the script is piped from curl.
 TMP=""
 cleanup() { if [ -n "$TMP" ]; then rm -rf "$TMP"; fi; }
 trap cleanup EXIT
 
-SCRIPT_DIR=""
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-fi
-
-if [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/skills" ]; then
-  SRC="$SCRIPT_DIR/skills"
-else
-  command -v git >/dev/null 2>&1 || fail "git is required to download the skills."
-  TMP="$(mktemp -d)"
-  printf '  %s↓ Downloading the skills…%s\n' "$DIM" "$RESET"
-  git clone -q --depth 1 "$REPO_URL" "$TMP/design-skills" || fail "Could not download $REPO_URL"
-  SRC="$TMP/design-skills/skills"
-fi
-
-AVAILABLE=()
-for dir in "$SRC"/*/; do
-  if [ -f "$dir/SKILL.md" ]; then AVAILABLE+=("$(basename "$dir")"); fi
-done
-[ "${#AVAILABLE[@]}" -gt 0 ] || fail "No skills found in $SRC"
-
-if [ "$LIST" = 1 ]; then
-  printf '  %sAvailable skills%s\n\n' "$BOLD" "$RESET"
-  for skill in "${AVAILABLE[@]}"; do
-    printf '  %s%s%s\n    %s%s%s\n\n' "$RED" "$skill" "$RESET" "$DIM" "$(describe "$SRC/$skill")" "$RESET"
-  done
-  exit 0
-fi
-
-if [ "${#ARGS[@]}" -gt 0 ]; then SKILLS=("${ARGS[@]}"); else SKILLS=("${AVAILABLE[@]}"); fi
-
-# --- install -------------------------------------------------------------------
-mkdir -p "$DEST"
-printf '  %sInstalling into %s%s\n\n' "$BOLD" "$(pretty_path "$DEST")" "$RESET"
-
-installed=0
-missing=0
-last_ok=""
-for skill in "${SKILLS[@]}"; do
-  if [ ! -f "$SRC/$skill/SKILL.md" ]; then
-    printf '  %s✗%s %s %s(not in this repo, see --list)%s\n' "$RED" "$RESET" "$skill" "$DIM" "$RESET"
-    missing=$((missing + 1))
-    continue
+find_source() {
+  local dir=""
+  if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   fi
-  if [ -e "$DEST/$skill" ]; then
-    mv "$DEST/$skill" "$DEST/$skill.backup-$STAMP"
-    printf '  %s↺%s %s %s(previous version kept as %s.backup-%s)%s\n' \
-      "$YELLOW" "$RESET" "$skill" "$DIM" "$skill" "$STAMP" "$RESET"
-  fi
-  cp -R "$SRC/$skill" "$DEST/$skill"
-  if [ -f "$DEST/$skill/SKILL.md" ]; then
-    printf '  %s✓%s %s%s%s\n' "$GREEN" "$RESET" "$BOLD" "$skill" "$RESET"
-    printf '    %s%s%s\n' "$DIM" "$(describe "$DEST/$skill")" "$RESET"
-    installed=$((installed + 1))
-    last_ok="$skill"
+  if [ -n "$dir" ] && [ -d "$dir/skills" ]; then
+    SRC="$dir/skills"
   else
-    fail "$skill was copied but SKILL.md is missing in $(pretty_path "$DEST/$skill")"
+    command -v git >/dev/null 2>&1 || fail "git is required to download the skills."
+    TMP="$(mktemp -d)"
+    note "Downloading the kit…"
+    git clone -q --depth 1 "$REPO_URL" "$TMP/kit" </dev/null || fail "Could not download $REPO_URL"
+    SRC="$TMP/kit/skills"
   fi
-done
+  OURS=()
+  for dir in "$SRC"/*/; do
+    if [ -f "$dir/SKILL.md" ]; then OURS+=("$(basename "$dir")"); fi
+  done
+}
 
-# --- summary -------------------------------------------------------------------
-printf '\n'
-if [ "$installed" -gt 0 ]; then
-  plural="skills"; [ "$installed" -eq 1 ] && plural="skill"
-  printf '  %s%s %s installed.%s Open a new Claude Code session to load them.\n' \
-    "$GREEN" "$installed" "$plural" "$RESET"
-  printf '  %sThen ask Claude to use one by name, for example /%s.%s\n' "$DIM" "$last_ok" "$RESET"
-fi
-printf '\n  %sFly high. RedEagle01%s\n\n' "$RED" "$RESET"
-[ "$missing" -eq 0 ] || exit 1
+show_list() {
+  local s entry
+  section "Our skills (copied into $(pretty_path "$DEST"))"
+  for s in "${OURS[@]+"${OURS[@]}"}"; do
+    printf '  %s%s%s\n' "$RED" "$s" "$RESET"; note "$(describe "$SRC/$s")"
+  done
+  if [ "${#SKILL_PACKS[@]}" -gt 0 ]; then
+    section "Partner skills (installed from their authors with npx skills)"
+    for entry in "${SKILL_PACKS[@]}"; do
+      printf '  %s%s%s\n' "$RED" "${entry%%|*}" "$RESET"; note "${entry#*|}"
+    done
+  fi
+  if [ "${#PLUGINS[@]}" -gt 0 ]; then
+    section "Claude Code plugins"
+    for entry in "${PLUGINS[@]}"; do
+      printf '  %s%s%s\n' "$RED" "${entry%%|*}" "$RESET"; note "${entry##*|}"
+    done
+  fi
+  printf '\n'
+}
+
+install_ours() {
+  local skills=("$@") s failed=0
+  if [ "${#skills[@]}" -eq 0 ]; then skills=("${OURS[@]+"${OURS[@]}"}"); fi
+  [ "${#skills[@]}" -gt 0 ] || return 0
+  section "Our skills → $(pretty_path "$DEST")"
+  mkdir -p "$DEST"
+  for s in "${skills[@]}"; do
+    if [ ! -f "$SRC/$s/SKILL.md" ]; then
+      warn "$s"; note "not in this repo (see --list)"; failed=$((failed + 1)); continue
+    fi
+    if [ -e "$DEST/$s" ]; then
+      mv "$DEST/$s" "$DEST/$s.backup-$STAMP"
+      ok "$s"; note "previous version kept as $s.backup-$STAMP"
+    else
+      ok "$s"
+    fi
+    cp -R "$SRC/$s" "$DEST/$s"
+    [ -f "$DEST/$s/SKILL.md" ] || { warn "$s copied without SKILL.md"; failed=$((failed + 1)); }
+  done
+  return "$failed"
+}
+
+install_packs() {
+  local entry repo failed=0
+  [ "${#SKILL_PACKS[@]}" -gt 0 ] || return 0
+  section "Partner skills (from their authors)"
+  if ! command -v npx >/dev/null 2>&1; then
+    warn "Node.js is missing, partner skills skipped"; note "Install Node.js, then run this script again."
+    return 1
+  fi
+  for entry in "${SKILL_PACKS[@]}"; do
+    repo="${entry%%|*}"
+    if npx --yes skills add "$repo" --full-depth -g -a claude-code -s '*' -y </dev/null >/dev/null 2>&1; then
+      ok "$repo"; note "${entry#*|}"
+    else
+      warn "$repo"; note "retry: npx skills add $repo --full-depth -g -a claude-code -s '*' -y"
+      failed=$((failed + 1))
+    fi
+  done
+  return "$failed"
+}
+
+install_plugins() {
+  local entry id market source failed=0
+  [ "${#PLUGINS[@]}" -gt 0 ] || return 0
+  section "Claude Code plugins"
+  if ! command -v claude >/dev/null 2>&1; then
+    warn "the claude CLI is missing, plugins skipped"; note "Install Claude Code, then run this script again."
+    return 1
+  fi
+  for entry in "${PLUGINS[@]}"; do
+    id="${entry%%|*}"; market="${id#*@}"
+    source="${entry#*|}"; source="${source%%|*}"
+    if ! claude plugin marketplace list </dev/null 2>/dev/null | grep -q "$market"; then
+      claude plugin marketplace add "$source" </dev/null >/dev/null 2>&1 || true
+    fi
+    if claude plugin install "$id" -s user </dev/null >/dev/null 2>&1; then
+      ok "${id%@*}"; note "${entry##*|}"
+    else
+      warn "${id%@*}"; note "retry: claude plugin install $id"
+      failed=$((failed + 1))
+    fi
+  done
+  return "$failed"
+}
+
+# Everything above is only definitions: bash reads the whole file before
+# running it, so `curl | bash` cannot be cut short by a command reading stdin.
+main "$@"
